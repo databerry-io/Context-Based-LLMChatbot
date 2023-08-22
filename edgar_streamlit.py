@@ -88,7 +88,7 @@ def text_to_docs(text: str) -> List[Document]:
 
 
 def main():
-    with open("/Users/xiang/PycharmProjects/Context-Based-LLMChatbot/kaggle/company_tickers_exchange.json", "r") as f:
+    with open("/../kaggle/company_tickers_exchange.json", "r") as f:
         CIK_dict = json.load(f)
 
     # convert CIK_dict to pandas
