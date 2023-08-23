@@ -20,6 +20,28 @@ import fpdf
 from fpdf import FPDF
 #import weasyprint
 
+st.set_page_config(page_title="DOCCHAT | WITHMOBIUS", 
+                #    initial_sidebar_state="collapsed",
+                   page_icon="data:image/png;base64,/9j/4AAQSkZJRgABAQIAHAAcAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2wBDAQMDAwQDBAgEBAgQCwkLEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/wAARCAAgACADAREAAhEBAxEB/8QAGQAAAgMBAAAAAAAAAAAAAAAABAcFBggJ/8QAMBAAAgEDAwEECAcAAAAAAAAAAQIDBAURAAYSIQcIIjETFBUyQVFhcSNDYoGRkqH/xAAZAQACAwEAAAAAAAAAAAAAAAACBAEFBgD/xAAlEQACAgECBgMBAQAAAAAAAAABAgADBBEhBRITIlGBMUGRMtH/2gAMAwEAAhEDEQA/AOVWunSfoOz7fd0jEtu2be6mMjkGioJWBH0PHro1qsfdVJ9Q1rdt1Un1Arttjclhx7dsFxt3I4HrdLJDn+wGoZWU6MNIJUrsRpI3QyIzuyW10UdtuN+eSCK6tURUlqabiFJCs8/Fm6JJxMQVjj3mAIJGnsBVNnM41AjuCqmzmYagRu2251FinjO6KyntksgDAXGsjgdgRkHEjAnpjrrTJn0V9rOBNGudQnazgR4bH3HS3OgVDUUlyt8+Y2AljqqeT5qQCyHz6g/TTy2UZabEMP2MB6cpdiGH7FD3r+7ps207Oftd7OqGK0CjmiivFsh6U5SVgiTwr+WQ5VWQeEhgVC4IOa4tw1McdarYfY/yZ7iWCtA6tew8TPVveSTatr9ko88dG9S9esQ5PDK7rhmUdeJjSMBvLIYZyMaqsezptEMezkaW7a+6qmmUU61xRBkGIuCgwOvhPTzPy+GtFQyWDuGsv6WSwdw1jm2fueWOn9KzJDSRfiPJxSKFMgZdm8KDyGST8BqzranGXm2UehH1NNC67KPQlJ7wveJtm49oP2ZbRqRWwVU0cl0rlz6IrE3JIYiffHMKzPgDwqFyMnWe4txNMoCmn+fs+ZQ8Tz0yB0qvjz5mbqaqqaOZaikqJIJU9143KsPsR1GqOU8mYd+bwgXim4aw/qZ+Tfycn/dGLHX4Jhix1+CYBcr/AHy88RdrxW1gTqonnaQL9gTgftoWYtux1gli25MA1Eif/9k=", layout="wide")
+
+#Creating the chatbot interface
+#st.title("Mobius: LLM-Powered Chatbot")
+st.markdown("""
+<h1 style='text-align: center; color: teal;'>Mobius: LLM-Powered EDGAR Chatbot</h1>
+<style>
+    .katex .base {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+    }
+    .stCodeBlock code {
+        white-space: break-spaces !important;
+        }
+</style>
+""", unsafe_allow_html=True)
+
+
+
 # Storing the chat
 if 'generated' not in st.session_state:
     st.session_state['generated'] = []
@@ -38,7 +60,7 @@ def clear_input_text():
 # We will get the user's input by calling the get_text function
 def get_text():
     global input_text
-    input_text = st.text_input("Input Company Ticker", key="input1", on_change=clear_input_text)
+    input_text = st.text_input("Select Company Ticker", key="input1", on_change=clear_input_text)
     return input_text
 
 
@@ -96,19 +118,21 @@ def main():
 
 
     #user_input = get_text()
-    user_question = get_question()
-
     col_one_list = CIK_df["ticker"].tolist()
 
     unique_sorted = sorted(list(set(col_one_list)))
 
-    user_select = st.selectbox('Select company ticker', unique_sorted)
+    with st.sidebar:
+        user_select = st.selectbox('Select Company Ticker', unique_sorted)
+        user_question = get_question()
 
     #uploaded_file = st.file_uploader("**Upload Your PDF/DOCX/TXT File**", type=['pdf', 'docx', 'txt'])
     st.markdown("""---""")
-    
-
+    # with st.container():
+    #     col1, col2, col3 = st.columns((25,50,25))
+    #     with col2:
     if user_select:
+
 #        print(CIK_df[:10])
 
         CIK = CIK_df[CIK_df["ticker"] == user_select].cik.values[0]
