@@ -199,7 +199,7 @@ def answer_Faiss_rate(prompt: str, documents: List[Document], persist_directory:
     #                 time.sleep(1)
 
     # expose this index in a retriever interface
-    retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k": config.k})
+    retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k": 6})
     
     # create a chain to answer questions 
     qa = RetrievalQA.from_chain_type(
