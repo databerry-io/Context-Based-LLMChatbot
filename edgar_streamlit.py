@@ -1,3 +1,5 @@
+#earning report example: https://www.sec.gov/Archives/edgar/data/1288776/000119312511011442/dex991.htm
+#earning report api: https://site.financialmodelingprep.com/developer/docs/earning-call-transcript-api/
 import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 
 import chat
@@ -18,6 +20,9 @@ from pathlib import Path
 import pdfkit
 import fpdf
 from fpdf import FPDF
+from bs4 import BeautifulSoup
+import html
+import fmp_endpoint
 #import weasyprint
 
 st.set_page_config(page_title="DOCCHAT | WITHMOBIUS", 
@@ -108,54 +113,37 @@ def text_to_docs(text: str) -> List[Document]:
             doc_chunks.append(doc)
     return doc_chunks
 
-
-def main():
-    with open("/../kaggle/company_tickers_exchange.json", "r") as f:
+def company_info():
+    with open("/Users/xiang/PycharmProjects/Context-Based-LLMChatbot/kaggle/company_tickers_exchange.json", "r") as f:
         CIK_dict = json.load(f)
 
     # convert CIK_dict to pandas
     CIK_df = pd.DataFrame(CIK_dict["data"], columns=CIK_dict["fields"])
 
+    return CIK_df
 
-    #user_input = get_text()
-    col_one_list = CIK_df["ticker"].tolist()
+def edgar_api():
+    result  = ''
+    CIK_df = company_info()
+    CIK = CIK_df[CIK_df["ticker"] == user_select].cik.values[0]
 
-    unique_sorted = sorted(list(set(col_one_list)))
+            # preparation of input data, using ticker and CIK set earlier
+    url = f"https://data.sec.gov/submissions/CIK{str(CIK).zfill(10)}.json"
 
-    with st.sidebar:
-        user_select = st.selectbox('Select Company Ticker', unique_sorted)
-        user_question = get_question()
+    # read response from REST API with `requests` library and format it as python dict
+    import requests
+    header = {
+    "User-Agent": ""#, # remaining fields are optional
+    #    "Accept-Encoding": "gzip, deflate",
+    #    "Host": "data.sec.gov"
+    }
 
-    #uploaded_file = st.file_uploader("**Upload Your PDF/DOCX/TXT File**", type=['pdf', 'docx', 'txt'])
-    st.markdown("""---""")
-    # with st.container():
-    #     col1, col2, col3 = st.columns((25,50,25))
-    #     with col2:
-    if user_select:
+    company_filings = requests.get(url, headers=header).json()
+    company_filings_df = pd.DataFrame(company_filings["filings"]["recent"])
+    access_number = company_filings_df[company_filings_df.form == "10-K"].accessionNumber.values[0].replace("-", "")
+    file_names = company_filings_df[company_filings_df.form == "10-K"].primaryDocument.values
 
-#        print(CIK_df[:10])
-
-        CIK = CIK_df[CIK_df["ticker"] == user_select].cik.values[0]
-
-                # preparation of input data, using ticker and CIK set earlier
-        url = f"https://data.sec.gov/submissions/CIK{str(CIK).zfill(10)}.json"
-
-        # read response from REST API with `requests` library and format it as python dict
-        import requests
-        header = {
-        "User-Agent": "your.email@email.com"#, # remaining fields are optional
-        #    "Accept-Encoding": "gzip, deflate",
-        #    "Host": "data.sec.gov"
-        }
-
-        company_filings = requests.get(url, headers=header).json()
-
-        company_filings_df = pd.DataFrame(company_filings["filings"]["recent"])
-        print(company_filings_df[:10])
-
-        access_number = company_filings_df[company_filings_df.form == "10-K"].accessionNumber.values[0].replace("-", "")
-
-        file_name = company_filings_df[company_filings_df.form == "10-K"].primaryDocument.values[0]
+    for file_name in file_names:
 
         url_file = f"https://www.sec.gov/Archives/edgar/data/{CIK}/{access_number}/{file_name}"
         print(f"url_file is {url_file}")
@@ -163,18 +151,67 @@ def main():
         # dowloading and saving requested document to working directory
         req_content = requests.get(url_file, headers=header).content.decode("utf-8")
 
-        from bs4 import BeautifulSoup
         soup = BeautifulSoup(req_content, 'html.parser')
         req_content_text = soup.get_text()
+        result += req_content_text
 
-        print(f"len of req_content is {len(req_content)}") 
-        # with open(file_name, "w") as f:
-        #     f.write(req_content)
-        # import pdfkit
-        # pdfkit.from_url(file_name, 'out1.pdf')
+        return result
+
+
+
+EAR_API_KEY = ""
+
+def main():
+
+    CIK_df = company_info()
+    col_one_list = CIK_df["ticker"].tolist()
+
+    unique_sorted = sorted(list(set(col_one_list)))
+    forms_list = ['10-K', 'earnings conference call']
+    years_list = [2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013]
+    quarters_list = ['FY',1,2,3,4]
+
+    with st.sidebar:
+        user_select = st.selectbox('Select Company Ticker', unique_sorted)
+        user_select_forms = st.selectbox('Select File Form', forms_list)
+        user_select_year = st.selectbox('Select Year', years_list)
+        user_select_quarter = st.selectbox('Select Quarter', quarters_list)
+        user_question = get_question()
+
+    st.markdown("""---""")
+
+    if user_select and user_select_forms and user_select_year:
+        year = user_select_year
+
+        req_content_text_all = ""
+        if user_select_forms == "10-K":
+            quarter = "FY"
+            url = f"https://financialmodelingprep.com/api/v4/financial-reports-json?symbol={user_select}&year={year}&period={quarter}&apikey={EAR_API_KEY}"
+            result = fmp_endpoint.get_jsonparsed_data(url)
+            req_content_text = str(result)
+            req_content_text_all += req_content_text
+
+        else:
+            if user_select_quarter and user_select_quarter != "FY":
+                quarter = user_select_quarter
+            else:
+                quarter = 1
+            
+            if year >= 2021:
+                print("using edgar api")
+                result = edgar_api()
+                req_content_text_all += result
+            else:
+                print("using fmp api")
+                url = f"https://financialmodelingprep.com/api/v3/earning_call_transcript/{user_select}?quarter={quarter}&year={year}&apikey={EAR_API_KEY}"
+                result = fmp_endpoint.get_jsonparsed_data(url)
+                req_content_text = result[0]["content"]
+                req_content_text_all += req_content_text
+            
+
 
         if user_question:
-            pages = text_to_docs(req_content_text)
+            pages = text_to_docs(req_content_text_all)
             output, sources = chat.answer_Faiss_rate(user_question, pages)
 
             st.session_state.past.append(user_question)
@@ -190,7 +227,6 @@ def main():
                     st.title("Citation")
 
 
-
     with st.container():
         col1, col2 = st.columns(2, gap="large")
         #print("session is: ", st.session_state)
@@ -199,14 +235,14 @@ def main():
         if all(st.session_state.get(key) for key in required_keys):
 
             for i in range(len(st.session_state['generated'])-1, -1, -1):
-                #app_state = json.dumps(st.session_state._state.to_dict())
                 with col1:
                     message(st.session_state['past'][i], is_user=True, key=str(i) + '_user')
                     message(st.session_state["generated"][i], key=str(i))
             with col2:
-                #  item_list = []
-                for item in st.session_state["citation"][-1]:
-                    st.info(str(item), icon="ℹ️")
+                #for item in st.session_state["citation"][-1]:
+                for i in range(len(st.session_state['citation'])-1, -1, -1):
+                    st.info(st.session_state['citation'][i], icon="ℹ️")
+                    #st.info(str(item), icon="ℹ️")
 
 
 
